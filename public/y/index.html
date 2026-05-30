@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Indian Stock Analyzer</title>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:Arial,sans-serif;
+    }
+
+    body{
+      background:#0f172a;
+      color:white;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+    }
+
+    .container{
+      width:100%;
+      max-width:700px;
+      background:#1e293b;
+      border-radius:20px;
+      padding:30px;
+      box-shadow:0 0 20px rgba(0,0,0,.3);
+    }
+
+    h1{
+      text-align:center;
+      margin-bottom:20px;
+      color:#38bdf8;
+    }
+
+    .search-box{
+      display:flex;
+      gap:10px;
+      margin-bottom:20px;
+    }
+
+    input{
+      flex:1;
+      padding:15px;
+      border:none;
+      border-radius:10px;
+      background:#334155;
+      color:white;
+      font-size:18px;
+      outline:none;
+    }
+
+    button{
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:10px;
+      padding:15px 25px;
+      cursor:pointer;
+      font-size:18px;
+    }
+
+    button:hover{
+      background:#1d4ed8;
+    }
+
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-bottom:20px;
+    }
+
+    .chip{
+      background:#334155;
+      padding:8px 15px;
+      border-radius:20px;
+      cursor:pointer;
+    }
+
+    .chip:hover{
+      background:#475569;
+    }
+
+    .card{
+      background:#0f172a;
+      padding:20px;
+      border-radius:15px;
+      display:none;
+    }
+
+    .row{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:15px;
+    }
+
+    .label{
+      color:#94a3b8;
+    }
+
+    .value{
+      font-weight:bold;
+    }
+
+    .buy{
+      color:#22c55e;
+    }
+
+    .wait{
+      color:#f59e0b;
+    }
+
+    .dip{
+      color:#38bdf8;
+    }
+
+    .error{
+      color:red;
+      margin-top:10px;
+      text-align:center;
+    }
+
+    .loader{
+      text-align:center;
+      margin-top:15px;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>📈 Indian Stock Analyzer</h1>
+
+  <div class="search-box">
+    <input
+      type="text"
+      id="symbol"
+      placeholder="Enter stock symbol (RELIANCE)"
+    />
+    <button onclick="analyzeStock()">
+      Analyze
+    </button>
+  </div>
+
+  <div class="chips">
+    <div class="chip" onclick="quick('RELIANCE')">RELIANCE</div>
+    <div class="chip" onclick="quick('TCS')">TCS</div>
+    <div class="chip" onclick="quick('SBIN')">SBIN</div>
+    <div class="chip" onclick="quick('INFY')">INFY</div>
+    <div class="chip" onclick="quick('HDFCBANK')">HDFCBANK</div>
+  </div>
+
+  <div class="loader" id="loader">
+    Loading stock data...
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="card" id="result">
+
+    <div class="row">
+      <span class="label">Symbol</span>
+      <span class="value" id="stockSymbol"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Current Price</span>
+      <span class="value" id="price"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">RSI</span>
+      <span class="value" id="rsi"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">EMA 20</span>
+      <span class="value" id="ema20"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">EMA 50</span>
+      <span class="value" id="ema50"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Signal</span>
+      <span class="value" id="decision"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Buy Price</span>
+      <span class="value" id="buy"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Stop Loss</span>
+      <span class="value" id="sl"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Target</span>
+      <span class="value" id="target"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Risk Reward</span>
+      <span class="value" id="rr"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Trade Type</span>
+      <span class="value" id="trade"></span>
+    </div>
+
+    <div class="row">
+      <span class="label">Reason</span>
+      <span class="value" id="reason"></span>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+  // Local backend
+  const API_URL = "https://stock-analyse-qlr6.onrender.com/";
+
+  function quick(stock){
+    document.getElementById("symbol").value = stock;
+    analyzeStock();
+  }
+
+  async function analyzeStock(){
+
+    const symbol =
+      document.getElementById("symbol")
+      .value
+      .trim()
+      .toUpperCase();
+
+    if(!symbol){
+      return;
+    }
+
+    document.getElementById("loader")
+      .style.display = "block";
+
+    document.getElementById("error")
+      .innerHTML = "";
+
+    document.getElementById("result")
+      .style.display = "none";
+
+    try{
+
+      const response = await fetch(
+        `${API_URL}/analyze?symbol=${symbol}`
+      );
+
+      const data = await response.json();
+
+      if(data.error){
+        throw new Error(data.error);
+      }
+
+      document.getElementById("stockSymbol")
+        .innerText = data.symbol;
+
+      document.getElementById("price")
+        .innerText = "₹" + data.price;
+
+      document.getElementById("rsi")
+        .innerText = data.rsi;
+
+      document.getElementById("ema20")
+        .innerText = "₹" + data.ema20;
+
+      document.getElementById("ema50")
+        .innerText = "₹" + data.ema50;
+
+      document.getElementById("decision")
+        .innerText = data.decision;
+
+      document.getElementById("buy")
+        .innerText = "₹" + data.buy_price;
+
+      document.getElementById("sl")
+        .innerText = "₹" + data.stop_loss;
+
+      document.getElementById("target")
+        .innerText = "₹" + data.target;
+
+      document.getElementById("rr")
+        .innerText = data.rr;
+
+      document.getElementById("trade")
+        .innerText = data.trade_type;
+
+      document.getElementById("reason")
+        .innerText = data.reason;
+
+      document.getElementById("result")
+        .style.display = "block";
+
+    }
+    catch(error){
+
+      document.getElementById("error")
+        .innerHTML = error.message;
+
+    }
+    finally{
+      document.getElementById("loader")
+        .style.display = "none";
+    }
+  }
+
+</script>
+
+</body>
+</html>
