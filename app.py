@@ -14,7 +14,7 @@ def home():
     })
 
 
-@app.route("/analyze", methods=["GET"])
+@app.route("/analysze", methods=["GET"])
 def analyze():
 
     symbol = request.args.get("symbol")
